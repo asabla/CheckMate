@@ -20,6 +20,7 @@ export const conflictSchema = z.object({
     source: z.string().describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
     description: z.string().describe("A description of the conflict"),
 });
@@ -31,6 +32,7 @@ export const articleConflictsSchema = z.object({
     conflicts: z.array(conflictSchema).describe("The conflicts of interest in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the conflicts of interest.
             An example would be: No obvious conflicts of interest detected`),
 });
@@ -58,21 +60,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the conflicts of interest
  */
 export async function extractConflicts(newsArticle: string): Promise<ArticleConflicts> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleConflictsSchema, {
-        name: "news-article-conflicts",
-    });
+        const structured_llm = llm.withStructuredOutput(articleConflictsSchema, {
+            name: "news-article-conflicts",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Failed to extract conflicts of interest", error);
+        return {} as ArticleConflicts;
+    }
 }

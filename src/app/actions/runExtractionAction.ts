@@ -103,19 +103,31 @@ export async function runExtractionAction(prevState: IUrlExtractState, formData:
 
     // Step 4
     console.log("Checking trust level...");
-    const result = {
-        truthAndAccuracy: parseClaimsToResultItem(claims),
-        independence: parseConflictsToResultItem(conflicts),
-        fairnessAndImpartiality: parseFairnessToResultItem(fairness),
-        accountability: parseAccountabilityToResultItem(accountability),
-        harmMinimization: parseHarmMinimizationToResultItem(harm),
-        attribution: parseAttributionToResultItem(attribution),
-        originalReporting: parseOriginalReportingToResultItem(originalReporting)
-    } as AnalysisResult;
+    let trustLevel = {} as TrustLevelResult;
+    try {
+        const resultValue = {
+            truthAndAccuracy: parseClaimsToResultItem(claims),
+            independence: parseConflictsToResultItem(conflicts),
+            fairnessAndImpartiality: parseFairnessToResultItem(fairness),
+            accountability: parseAccountabilityToResultItem(accountability),
+            harmMinimization: parseHarmMinimizationToResultItem(harm),
+            attribution: parseAttributionToResultItem(attribution),
+            originalReporting: parseOriginalReportingToResultItem(originalReporting)
+        } as AnalysisResult;
 
-    const trustLevel = await extractResultTrustLevel({
-        result: result
-    });
+        const trustResult = await extractResultTrustLevel({
+            result: resultValue
+        });
+
+        console.log("Trust level extracted:", trustResult.trustLevel);
+
+        trustLevel = {
+            TrustLevel: trustResult.trustLevel,
+            TrustDescription: trustResult.trustDescription || ""
+        };
+    } catch (error) {
+        console.error("Error extracting trust level:", error);
+    }
     console.log("Trust level extracted successfully.");
 
     // Everything is done
@@ -125,8 +137,8 @@ export async function runExtractionAction(prevState: IUrlExtractState, formData:
         url: url,
         article: articleContent,
         trustLevel: {
-            TrustLevel: trustLevel.trustLevel,
-            TrustDescription: trustLevel.trustDescription
+            TrustLevel: trustLevel.TrustLevel,
+            TrustDescription: trustLevel.TrustDescription
         },
         result: {
             TruthAndAccuracy: parseClaimsToResultItem(claims),
@@ -141,10 +153,10 @@ export async function runExtractionAction(prevState: IUrlExtractState, formData:
 }
 
 function parseClaimsToResultItem(claims: ArticleClaims): ResultItem[] {
-    return claims.claims.map(claim => ({
+    return (claims.claims || []).map(claim => ({
         Title: claim.title,
         Description: claim.description,
-        Source: claim.source,
+        Source: claim.source || "",
         SourceUrl: claim.sourceUrl || ""
     }));
 }

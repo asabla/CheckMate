@@ -20,10 +20,11 @@ export type TrustResult = z.infer<typeof trustResultSchema>;
  */
 export const trustResultSchema = z.object({
     trustLevel: z
-        .enum(["High", "Medium", "Low"])
+        .enum(["High", "Medium", "Low", "Unknown"])
         .describe("The trust level of the article"),
-    trustDescription: z.
-        string()
+    trustDescription: z
+        .optional(z.string())
+        .nullable()
         .describe("The description of the trust level"),
 });
 

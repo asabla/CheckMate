@@ -20,6 +20,7 @@ export const fairnessSchema = z.object({
     source: z.string().describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
     description: z.string().describe("A description of the fairness issue"),
 });
@@ -31,6 +32,7 @@ export const articleFairnessSchema = z.object({
     fairness: z.array(fairnessSchema).describe("The fairness issues in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the fairness issues.
             An example would be: Multiple viewpoints are presented`),
 });
@@ -58,21 +60,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the fairness issues
  */
 export async function extractFairness(newsArticle: string): Promise<ArticleFairness> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleFairnessSchema, {
-        name: "news-article-fairness",
-    });
+        const structured_llm = llm.withStructuredOutput(articleFairnessSchema, {
+            name: "news-article-fairness",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Error extracting fairness issues:", error);
+        return {} as ArticleFairness;
+    }
 }

@@ -18,21 +18,26 @@ import {
  * @returns a promise with the news article object
  */
 export async function extractInformation(articleText: string): Promise<NewsArticle> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(newsArticleSchema, {
-        name: "news-article",
-    });
+        const structured_llm = llm.withStructuredOutput(newsArticleSchema, {
+            name: "news-article",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: articleText,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: articleText,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Error extracting information from article:", error);
+        return {} as NewsArticle;
+    }
 };

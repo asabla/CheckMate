@@ -18,20 +18,30 @@ export type ArticleClaims = z.infer<typeof articleClaimsSchema>;
 export const claimSchema = z.object({
     title: z.string().describe("The title of the claim"),
     claim: z.string().describe("The claim being made"),
-    source: z.string().describe("Name of the source or link title"),
+    source: z
+        .optional(z.string())
+        .nullable()
+        .describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
-    description: z.string().describe("A description of the claim"),
+    description: z
+        .string()
+        .describe("A description of the claim"),
 });
 
 /**
  * Represents the claims made in an article.
  */
 export const articleClaimsSchema = z.object({
-    claims: z.array(claimSchema).describe("The claims made in the article"),
+    claims: z
+        .optional(z.array(claimSchema))
+        .nullable()
+        .describe("The claims made in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the claims made.
             An example would be: The main claims are supported
             but require additional verification`),
@@ -60,21 +70,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the claims made
  */
 export async function extractClaims(newsArticle: string): Promise<ArticleClaims> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleClaimsSchema, {
-        name: "news-article-claims",
-    });
+        const structured_llm = llm.withStructuredOutput(articleClaimsSchema, {
+            name: "news-article-claims",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Error extracting claims:", error);
+        return {} as ArticleClaims;
+    }
 }

@@ -20,6 +20,7 @@ export const attributionSchema = z.object({
     source: z.string().describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
     description: z.string().describe("A description of the attribution issue"),
 });
@@ -31,6 +32,7 @@ export const articleAttributionsSchema = z.object({
     attributions: z.array(attributionSchema).describe("The attribution issues in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the attribution issues.
             An example would be: Most claims are properly attributed to sources`),
 });
@@ -58,21 +60,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the attribution issues
  */
 export async function extractAttribution(newsArticle: string): Promise<ArticleAttributions> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleAttributionsSchema, {
-        name: "news-article-attribution",
-    });
+        const structured_llm = llm.withStructuredOutput(articleAttributionsSchema, {
+            name: "news-article-attribution",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Error extracting attribution issues:", error);
+        return {} as ArticleAttributions;
+    }
 }

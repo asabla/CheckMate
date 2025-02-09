@@ -54,42 +54,47 @@ export const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns The extracted article content as MarkDown text
  */
 export async function getContentAsMarkdown(url: string): Promise<string> {
-    if (!isValidUrl(url)) {
-        throw new Error(`Invalid URL: ${url}`);
-    } else {
-        console.log(`Valid URL: ${url}`);
-    }
-
-    const browserless_url = process.env.BROWSERLESS_WS_ENDPOINT;
-    if (!browserless_url) {
-        throw new Error("BROWSER_WS_ENDPOINT is not defined");
-    }
-
-    console.log(`Connecting to browserless endpoint at ${browserless_url}`);
-    const browser = await chromium.connect(browserless_url, {
-        timeout: 20_000,
-    });
-    const page = await browser.newPage();
-
     try {
-        console.log(`Navigating to ${url}`);
-        await page.goto(url, { waitUntil: "networkidle" });
-
-        console.log("Extracting article content...");
-        const articleContent = await extractArticleFromUrl(page);
-
-        if (articleContent) {
-            console.log("Article content extracted successfully.");
-            return articleContent;
+        if (!isValidUrl(url)) {
+            throw new Error(`Invalid URL: ${url}`);
         } else {
-            console.info("No article tag found. Using Jina AI service to extract article content...");
-            const extractedContent = await extractArticleWithJina(url);
-
-            console.log("Article content extracted successfully");
-            return extractedContent;
+            console.log(`Valid URL: ${url}`);
         }
-    } finally {
-        await browser.close();
+
+        const browserless_url = process.env.BROWSERLESS_WS_ENDPOINT;
+        if (!browserless_url) {
+            throw new Error("BROWSER_WS_ENDPOINT is not defined");
+        }
+
+        console.log(`Connecting to browserless endpoint at ${browserless_url}`);
+        const browser = await chromium.connect(browserless_url, {
+            timeout: 20_000,
+        });
+        const page = await browser.newPage();
+
+        try {
+            console.log(`Navigating to ${url}`);
+            await page.goto(url, { waitUntil: "networkidle" });
+
+            console.log("Extracting article content...");
+            const articleContent = await extractArticleFromUrl(page);
+
+            if (articleContent) {
+                console.log("Article content extracted successfully.");
+                return articleContent;
+            } else {
+                console.info("No article tag found. Using Jina AI service to extract article content...");
+                const extractedContent = await extractArticleWithJina(url);
+
+                console.log("Article content extracted successfully");
+                return extractedContent;
+            }
+        } finally {
+            await browser.close();
+        }
+    } catch (error) {
+        console.error(`Error extracting article content: ${error}`);
+        return "";
     }
 }
 

@@ -20,17 +20,23 @@ export const originalReportingSchema = z.object({
     source: z.string().describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
-    description: z.string().describe("A description of the original reporting issue"),
+    description: z
+        .string()
+        .describe("A description of the original reporting issue"),
 });
 
 /**
  * Represents the original reporting issues in an article.
  */
 export const articleOriginalReportingSchema = z.object({
-    originalReporting: z.array(originalReportingSchema).describe("The original reporting issues in the article"),
+    originalReporting: z
+        .array(originalReportingSchema)
+        .describe("The original reporting issues in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the original reporting issues.
             An example would be: Some content appears to be derivative of other sources`),
 });
@@ -58,21 +64,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the original reporting issues
  */
 export async function extractOriginalReporting(newsArticle: string): Promise<ArticleOriginalReporting> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleOriginalReportingSchema, {
-        name: "news-article-original-reporting",
-    });
+        const structured_llm = llm.withStructuredOutput(articleOriginalReportingSchema, {
+            name: "news-article-original-reporting",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error(`Error extracting original reporting: ${error}`);
+        return {} as ArticleOriginalReporting;
+    }
 }

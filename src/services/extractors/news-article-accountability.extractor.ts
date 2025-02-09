@@ -20,6 +20,7 @@ export const accountabilitySchema = z.object({
     source: z.string().describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
     description: z.string().describe("A description of the accountability issue"),
 });
@@ -28,9 +29,12 @@ export const accountabilitySchema = z.object({
  * Represents the accountability issues in an article.
  */
 export const articleAccountabilitiesSchema = z.object({
-    accountabilities: z.array(accountabilitySchema).describe("The accountability issues in the article"),
+    accountabilities: z
+        .array(accountabilitySchema)
+        .describe("The accountability issues in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the accountability issues.
             An example would be: Sources are cited but some need additional verification`),
 });
@@ -58,21 +62,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the accountability issues
  */
 export async function extractAccountability(newsArticle: string): Promise<ArticleAccountabilities> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleAccountabilitiesSchema, {
-        name: "news-article-fairness",
-    });
+        const structured_llm = llm.withStructuredOutput(articleAccountabilitiesSchema, {
+            name: "news-article-fairness",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Error extracting accountability issues:", error);
+        return {} as ArticleAccountabilities;
+    }
 }

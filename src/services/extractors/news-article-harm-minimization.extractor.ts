@@ -20,6 +20,7 @@ export const harmMinimizationSchema = z.object({
     source: z.string().describe("Name of the source or link title"),
     sourceUrl: z
         .optional(z.string())
+        .nullable()
         .describe("Markdown url of the source"),
     description: z.string().describe("A description of the harm minimization issue"),
 });
@@ -28,9 +29,12 @@ export const harmMinimizationSchema = z.object({
  * Represents the harm minimization issues in an article.
  */
 export const articleHarmMinimizationsSchema = z.object({
-    harmMinimizations: z.array(harmMinimizationSchema).describe("The harm minimization issues in the article"),
+    harmMinimizations: z
+        .array(harmMinimizationSchema)
+        .describe("The harm minimization issues in the article"),
     conclusion: z
         .optional(z.string())
+        .nullable()
         .describe(`Conclusion drawn from the harm minimization issues.
             An example would be: Content appears to follow ethical guidelines`),
 });
@@ -58,21 +62,26 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
  * @returns a promise with the harm minimization issues
  */
 export async function extractHarmMinimization(newsArticle: string): Promise<ArticleHarmMinimizations> {
-    const llm = new AzureChatOpenAI({
-        deploymentName: "gpt-4o",
-        temperature: 0,
-        azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
-        azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
-    });
+    try {
+        const llm = new AzureChatOpenAI({
+            deploymentName: "gpt-4o",
+            temperature: 0,
+            azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+            azureOpenAIEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            azureOpenAIApiKey: process.env.AZURE_OPENAI_KEY,
+        });
 
-    const structured_llm = llm.withStructuredOutput(articleHarmMinimizationsSchema, {
-        name: "news-article-harm-minimization",
-    });
+        const structured_llm = llm.withStructuredOutput(articleHarmMinimizationsSchema, {
+            name: "news-article-harm-minimization",
+        });
 
-    const prompt = await promptTemplate.invoke({
-        text: newsArticle,
-    });
+        const prompt = await promptTemplate.invoke({
+            text: newsArticle,
+        });
 
-    return await structured_llm.invoke(prompt);
+        return await structured_llm.invoke(prompt);
+    } catch (error) {
+        console.error("Error extracting harm minimization issues:", error);
+        return {} as ArticleHarmMinimizations;
+    }
 }
