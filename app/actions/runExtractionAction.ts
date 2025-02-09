@@ -1,6 +1,6 @@
 "use server"
 
-import { extractResultTrustLevel, TrustResult } from "@/services/analyzers/resultTrust.analyzer";
+import { extractResultTrustLevel } from "@/services/analyzers/resultTrust.analyzer";
 import { ArticleAccountabilities, extractAccountability } from "@/services/extractors/news-article-accountability.extractor";
 import { ArticleAttributions, extractAttribution } from "@/services/extractors/news-article-attribution.extractor";
 import { ArticleClaims, extractClaims } from "@/services/extractors/news-article-claims.extractor";

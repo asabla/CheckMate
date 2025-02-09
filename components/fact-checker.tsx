@@ -18,7 +18,7 @@ const initialState: IUrlExtractState = {
 
 export default function FactChecker() {
   const [url, setUrl] = useState("")
-  const [showResults, setShowResults] = useState(false)
+  // const [showResults, setShowResults] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [state, formAction] = useActionState(runExtractionAction, initialState)
 
